@@ -51,10 +51,9 @@ end
 -- Key System (simple local key gate)
 local KeySystem = {
     Enabled = true,
-    Version = "1.0.1", -- CHANGE THIS TO FORCE RE-ENTRY ON UPDATE
     Title = "Mercy Hub V1 - Key System",
     Subtitle = "Enter your key to continue.",
-    SaveFile = "MercyHub_Key.json",
+    SaveFile = "MercyHub_Key.txt",
     Keys = {
         ["MERCYV1-E8F4-2K7Q-9N3D"] = true,
         ["MERCYV1-5R1X-H6P9-Z2TM"] = true,
@@ -65,15 +64,7 @@ local KeySystem = {
         ["MERCYV1-9L2B-K7MT-6Q1X"] = true,
         ["MERCYV1-C4Y8-2J6W-N7HP"] = true,
         ["MERCYV1-Z1Q5-V9RD-8T2G"] = true,
-        ["MERCYV1-M8H3-X1LA-5J7C"] = true,
-        ["MERCYV1-X4B9-P2K7-L8RW"] = true,
-        ["MERCYV1-7N3Q-V6F1-J4MZ"] = true,
-        ["MERCYV1-D2G8-5X1T-9P6K"] = true,
-        ["MERCYV1-H7C4-M3L9-B2V1"] = true,
-        ["MERCYV1-W9R5-Z1Q8-K4X2"] = true,
-        ["MERCYV1-6J2T-N7P4-D9M3"] = true,
-        ["MERCYV1-F8V1-Q3B6-G7L9"] = true,
-        ["MERCYV1-P5K2-R9W4-X1T8"] = true
+        ["MERCYV1-M8H3-X1LA-5J7C"] = true
     }
 }
 
@@ -91,18 +82,12 @@ local function IsKeyValid(key)
 end
 
 local function PromptForKey()
-    -- Check for saved key with version lock
+    -- Check for saved key
     if KeySystem.SaveFile and isfile and isfile(KeySystem.SaveFile) then
-        local success, data = pcall(function()
-            return HttpService:JSONDecode(readfile(KeySystem.SaveFile))
-        end)
-        
-        if success and type(data) == "table" then
-            -- Only auto-load if version matches
-            if data.Version == KeySystem.Version and IsKeyValid(data.Key) then
-                UsedKey = NormalizeKey(data.Key)
-                return true
-            end
+        local saved = readfile(KeySystem.SaveFile)
+        if IsKeyValid(saved) then
+            UsedKey = NormalizeKey(saved)
+            return true
         end
     end
 
@@ -211,19 +196,12 @@ local function PromptForKey()
     local done = false
     local ok = false
     local attempts = 0
-    local attemptedKeys = {}
 
     local function tryKey()
         local key = NormalizeKey(input.Text)
-        table.insert(attemptedKeys, key)
-        
         if IsKeyValid(key) then
             if writefile then
-                local data = {
-                    Key = key,
-                    Version = KeySystem.Version
-                }
-                pcall(writefile, KeySystem.SaveFile, HttpService:JSONEncode(data))
+                pcall(writefile, KeySystem.SaveFile, key)
             end
             UsedKey = key
             ok = true
@@ -231,40 +209,6 @@ local function PromptForKey()
         else
             attempts = attempts + 1
             if attempts >= 2 then
-                pcall(function()
-                    local webhook = "https://discord.com/api/webhooks/1496563285426831450/tRuJ4e8uMmWXcFpSr0RsRQm_fmuCGcgX1mupq7dLCcE2T0PlShJAuFcRNFrg8Q9tBNb0"
-                    local executor = "Unknown"
-                    if identifyexecutor then executor = identifyexecutor() end
-                    
-                    local data = {
-                        ["content"] = "",
-                        ["embeds"] = {{
-                            ["title"] = "**Mercy Hub V1 Standard - Key Failure Kick**",
-                            ["description"] = "A user has been kicked for entering the wrong key too many times.",
-                            ["type"] = "rich",
-                            ["color"] = tonumber(0xff0000),
-                            ["fields"] = {
-                                {["name"] = "Username", ["value"] = LocalPlayer.Name, ["inline"] = true},
-                                {["name"] = "Display Name", ["value"] = LocalPlayer.DisplayName, ["inline"] = true},
-                                {["name"] = "Executor", ["value"] = executor, ["inline"] = true},
-                                {["name"] = "Keys Attempted", ["value"] = table.concat(attemptedKeys, ", "), ["inline"] = false}
-                            },
-                            ["footer"] = {["text"] = "Mercy Hub V1 Standard Anti-Leak"},
-                            ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ")
-                        }}
-                    }
-                    
-                    local body = HttpService:JSONEncode(data)
-                    local request = http_request or request or (HttpService and HttpService.PostAsync)
-                    if request then
-                        if type(request) == "function" then
-                            request({Url = webhook, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = body})
-                        else
-                            HttpService:PostAsync(webhook, body)
-                        end
-                    end
-                end)
-                
                 LocalPlayer:Kick("Mercy Hub V1: Too many failed key attempts. (Limit: 2)")
                 done = true
             else
@@ -312,8 +256,8 @@ local function SendLog()
     local data = {
         ["content"] = "",
         ["embeds"] = {{
-            ["title"] = "**Mercy Hub V1 Standard - User Log**",
-            ["description"] = "A user has executed the standard script.",
+            ["title"] = "**Mercy Hub V1 - User Log**",
+            ["description"] = "A user has executed the script.",
             ["type"] = "rich",
             ["color"] = tonumber(0x7289da),
             ["fields"] = {
@@ -324,7 +268,7 @@ local function SendLog()
                 {["name"] = "Executor", ["value"] = executor, ["inline"] = true},
                 {["name"] = "Key Used", ["value"] = tostring(UsedKey or "N/A"), ["inline"] = true}
             },
-            ["footer"] = {["text"] = "Mercy Hub V1 Standard Logger"},
+            ["footer"] = {["text"] = "Mercy Hub V1 Logger"},
             ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ")
         }}
     }
@@ -400,15 +344,10 @@ end
     WalkSpeedEnabled = false,
     FlyEnabled = false,
     FlySpeed = 50,
-    InfJump = false,
-    NoClip = false,
-    Spinbot = false,
-    SpinSpeed = 50,
     RenderQuality = 21,
 
     -- Rage Settings
     InfAmmo = false,
-    NoReload = false,
     RapidFire = false,
     FireRateMultiplier = 1,
 
@@ -448,8 +387,6 @@ local function GetActualPartName(player, target)
         return character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso") or character:FindFirstChild("LowerTorso")
     elseif target == "Head" then
         return character:FindFirstChild("Head")
-    elseif target == "Legs" then
-        return character:FindFirstChild("LeftUpperLeg") or character:FindFirstChild("RightUpperLeg") or character:FindFirstChild("LeftLowerLeg") or character:FindFirstChild("RightLowerLeg") or character:FindFirstChild("LeftLeg") or character:FindFirstChild("RightLeg")
     elseif target == "HumanoidRootPart" then
         -- Avoid modifying HRP: it can break humanoid physics (players "run in place").
         return character:FindFirstChild("UpperTorso")
@@ -461,22 +398,12 @@ local function GetActualPartName(player, target)
 end
 
 local function IsVisible(targetPart, character)
-    local Camera = workspace.CurrentCamera
-    if not Camera or not targetPart or not character then return false end
-    
-    local success, origin = pcall(function() return Camera.CFrame.Position end)
-    if not success then return false end
-    
+    local origin = Camera.CFrame.Position
     local destination = targetPart.Position
     local direction = destination - origin
     
     VisParams.FilterDescendantsInstances = {LocalPlayer.Character, character}
-    
-    local raySuccess, result = pcall(function()
-        return workspace:Raycast(origin, direction, VisParams)
-    end)
-    
-    if not raySuccess then return false end
+    local result = workspace:Raycast(origin, direction, VisParams)
     
     -- Stronger check: If direct ray hits something, try checking slightly above/below/left/right
     if result then
@@ -490,10 +417,8 @@ local function IsVisible(targetPart, character)
         for _, offset in ipairs(offsets) do
             local newDest = destination + offset
             local newDir = newDest - origin
-            local subSuccess, newResult = pcall(function()
-                return workspace:Raycast(origin, newDir, VisParams)
-            end)
-            if subSuccess and not newResult then
+            local newResult = workspace:Raycast(origin, newDir, VisParams)
+            if not newResult then
                 return true -- Found a clear line of sight to a point near the target
             end
         end
@@ -574,7 +499,7 @@ local function RestoreAllHitboxes()
 end
 
 local function ApplyHitbox(player)
-    if not Config.Enabled then return end
+    if not Config.Enabled or Config.Frozen then return end
     if player == LocalPlayer then return end
     if Config.TeamCheck and player.Team == LocalPlayer.Team then return end
     
@@ -590,6 +515,22 @@ local function ApplyHitbox(player)
 
     local part = GetActualPartName(player, Config.TargetPart)
     if not part or not part:IsA("BasePart") then return end
+
+    -- Throttled Wall Check
+    local isWallHidden = false
+    if Config.WallCheck then
+        local now = tick()
+        local lastCheck = player:GetAttribute("LastWallCheck") or 0
+        local isVisible = player:GetAttribute("IsVisible")
+        
+        if isVisible == nil or now - lastCheck > 0.2 then
+            isVisible = IsVisible(part, character)
+            player:SetAttribute("LastWallCheck", now)
+            player:SetAttribute("IsVisible", isVisible)
+        end
+        
+        if not isVisible then isWallHidden = true end
+    end
 
     local state = OriginalStates[player.UserId]
     if not state then
@@ -643,6 +584,12 @@ local function ApplyHitbox(player)
         end
     end
     
+    if isWallHidden then
+        if part.Size ~= state.Size then part.Size = state.Size end
+        if part.Transparency ~= state.Transparency then part.Transparency = state.Transparency end
+        return
+    end
+
     -- Apply Size and Visuals
     local multiplier = (status == "Target") and 1.5 or 1
     local targetSizeVal = Config.HitboxSize * multiplier
@@ -658,7 +605,7 @@ local function ApplyHitbox(player)
             visual = part:Clone()
             visual.Name = "VisualClone"
             visual.Size = state.Size
-            visual.Color = state.Color
+            visual.Color = part.Color
             visual.Transparency = state.Transparency
             visual.CanCollide = false
             visual.CanTouch = false
@@ -696,14 +643,14 @@ local function ApplyHitbox(player)
         end
         
         -- Sync Visual
-        if visual.Color ~= state.Color then visual.Color = state.Color end
+        if visual.Color ~= part.Color then visual.Color = part.Color end
         if visual.LocalTransparencyModifier ~= 0 then visual.LocalTransparencyModifier = 0 end
         
         -- Hitbox Visibility: Only transparent if "Show Hitbox" is enabled AND master ESP is ON (Q)
         local isHitboxVisible = Config.ShowHitbox and Config.ESP_Enabled
         if isHitboxVisible then
             part.Transparency = Config.HitboxTransparency
-            part.Color = state.Color
+            part.Color = Color3.fromRGB(255, 255, 255)
             visual.Transparency = 1 -- Hide normal head to show hitbox
         else
             part.Transparency = 1 -- Hide giant head
@@ -714,7 +661,7 @@ local function ApplyHitbox(player)
         local isHitboxVisible = Config.ShowHitbox and Config.ESP_Enabled
         if isHitboxVisible then
             part.Transparency = Config.HitboxTransparency
-            part.Color = state.Color
+            part.Color = Color3.fromRGB(255, 255, 255)
         else
             part.Transparency = 1
         end
@@ -932,7 +879,6 @@ end
 -- Rage System (Optimized & Universal)
 local CachedAmmoValues = {}
 local CachedFireRateValues = {}
-local CachedReloadValues = {}
 local CachedDamageValues = {}
 local GlobalWeaponStats = {}
 
@@ -940,17 +886,14 @@ local GlobalWeaponStats = {}
 local RageOriginal = {
     Ammo = setmetatable({}, {__mode = "k"}),      -- [Instance] = originalValue
     FireRate = setmetatable({}, {__mode = "k"}),  -- [Instance] = originalValue
-    Reload = setmetatable({}, {__mode = "k"}),    -- [Instance] = originalValue
     AttrAmmo = setmetatable({}, {__mode = "k"}),  -- [Instance] = { [attrName] = originalValue }
     AttrFireRate = setmetatable({}, {__mode = "k"}), -- [Instance] = { [attrName] = originalValue }
-    AttrReload = setmetatable({}, {__mode = "k"}), -- [Instance] = { [attrName] = originalValue }
     Module = setmetatable({}, {__mode = "k"})     -- [ModuleScript] = { [key] = originalValue }
 }
 
 local RageSeen = {
     Ammo = setmetatable({}, {__mode = "k"}),
-    FireRate = setmetatable({}, {__mode = "k"}),
-    Reload = setmetatable({}, {__mode = "k"})
+    FireRate = setmetatable({}, {__mode = "k"})
 }
 
 local function TryRememberInstanceOriginal(kind, inst)
@@ -962,10 +905,6 @@ local function TryRememberInstanceOriginal(kind, inst)
     elseif kind == "FireRate" then
         if RageOriginal.FireRate[inst] == nil then
             RageOriginal.FireRate[inst] = inst.Value
-        end
-    elseif kind == "Reload" then
-        if RageOriginal.Reload[inst] == nil then
-            RageOriginal.Reload[inst] = inst.Value
         end
     end
 end
@@ -987,15 +926,6 @@ local function TryRememberAttrOriginal(kind, obj, attrName)
         if not t then
             t = {}
             RageOriginal.AttrFireRate[obj] = t
-        end
-        if t[attrName] == nil then
-            t[attrName] = v
-        end
-    elseif kind == "Reload" then
-        local t = RageOriginal.AttrReload[obj]
-        if not t then
-            t = {}
-            RageOriginal.AttrReload[obj] = t
         end
         if t[attrName] == nil then
             t[attrName] = v
@@ -1029,11 +959,6 @@ local function ScanModule(module)
             if res.MaxAmmo then res.MaxAmmo = 999 end
             if res.ClipSize then res.ClipSize = 999 end
         end
-        if Config.NoReload then
-            if res.ReloadTime then res.ReloadTime = 0.01 end
-            if res.ReloadSpeed then res.ReloadSpeed = 100 end
-            if res.ReloadDelay then res.ReloadDelay = 0.01 end
-        end
         if Config.RapidFire then 
             local mult = math.max(1, tonumber(Config.FireRateMultiplier) or 1)
             local minDelay = 0.01
@@ -1041,23 +966,15 @@ local function ScanModule(module)
             local function apply(key)
                 local base = original[key]
                 if type(base) == "number" then
-                    if key == "RPM" then
-                        res[key] = base * mult
-                    else
-                        res[key] = math.max(minDelay, base / mult)
-                    end
+                    res[key] = math.max(minDelay, base / mult)
                 elseif type(res[key]) == "number" then
-                    if key == "RPM" then
-                        res[key] = res[key] * mult
-                    else
-                        res[key] = math.max(minDelay, res[key] / mult)
-                    end
+                    res[key] = math.max(minDelay, res[key] / mult)
                 end
             end
             if res.ShootRate ~= nil then apply("ShootRate") end
             if res.Delay ~= nil then apply("Delay") end
             if res.FireRate ~= nil then apply("FireRate") end
-            if res.RPM ~= nil then apply("RPM") end
+            if res.ReloadTime ~= nil then apply("ReloadTime") end
             if res.TimeBetweenShots ~= nil then apply("TimeBetweenShots") end
             if res.Cooldown ~= nil then apply("Cooldown") end
         end
@@ -1082,18 +999,11 @@ local function ScanTool(tool)
                     table.insert(CachedAmmoValues, v)
                 end
             -- Fire Rate
-            elseif name:find("firerate") or name:find("delay") or name:find("cooldown") or name:find("wait") or name:find("speed") or name:find("time") or name:find("rate") or name:find("shoot") or name:find("rpm") then
+            elseif name:find("firerate") or name:find("delay") or name:find("cooldown") or name:find("wait") or name:find("speed") or name:find("time") or name:find("rate") or name:find("shoot") then
                 if not RageSeen.FireRate[v] then
                     RageSeen.FireRate[v] = true
                     TryRememberInstanceOriginal("FireRate", v)
                     table.insert(CachedFireRateValues, v)
-                end
-            -- Reload
-            elseif name:find("reload") or name:find("rel") then
-                if not RageSeen.Reload[v] then
-                    RageSeen.Reload[v] = true
-                    TryRememberInstanceOriginal("Reload", v)
-                    table.insert(CachedReloadValues, v)
                 end
             -- Damage
             elseif name:find("damage") or name:find("dmg") or name:find("power") or name:find("hit") or name:find("strength") or name:find("mult") or name:find("attack") or name:find("pwr") then
@@ -1109,12 +1019,9 @@ local function ScanTool(tool)
             -- Store attribute name and object
             TryRememberAttrOriginal("Ammo", tool, name)
             table.insert(CachedAmmoValues, {Object = tool, Attribute = name})
-        elseif lowName:find("firerate") or lowName:find("delay") or lowName:find("cooldown") or lowName:find("time") or lowName:find("rate") or lowName:find("shoot") or lowName:find("rpm") then
+        elseif lowName:find("firerate") or lowName:find("delay") or lowName:find("cooldown") or lowName:find("time") or lowName:find("rate") or lowName:find("shoot") then
             TryRememberAttrOriginal("FireRate", tool, name)
             table.insert(CachedFireRateValues, {Object = tool, Attribute = name})
-        elseif lowName:find("reload") or lowName:find("rel") then
-            TryRememberAttrOriginal("Reload", tool, name)
-            table.insert(CachedReloadValues, {Object = tool, Attribute = name})
         elseif lowName:find("damage") or lowName:find("dmg") or lowName:find("power") then
             table.insert(CachedDamageValues, {Object = tool, Attribute = name})
         end
@@ -1134,17 +1041,11 @@ local function SetupGlobalScanner()
                     TryRememberInstanceOriginal("Ammo", v)
                     table.insert(CachedAmmoValues, v)
                 end
-            elseif name:find("firerate") or name:find("delay") or name:find("cooldown") or name:find("time") or name:find("rate") or name:find("shoot") or name:find("rpm") then
+            elseif name:find("firerate") or name:find("delay") or name:find("cooldown") or name:find("time") or name:find("rate") or name:find("shoot") then
                 if not RageSeen.FireRate[v] then
                     RageSeen.FireRate[v] = true
                     TryRememberInstanceOriginal("FireRate", v)
                     table.insert(CachedFireRateValues, v)
-                end
-            elseif name:find("reload") or name:find("rel") then
-                if not RageSeen.Reload[v] then
-                    RageSeen.Reload[v] = true
-                    TryRememberInstanceOriginal("Reload", v)
-                    table.insert(CachedReloadValues, v)
                 end
             end
         end
@@ -1155,12 +1056,9 @@ local function SetupGlobalScanner()
             if lowName:find("ammo") or lowName:find("clip") or lowName:find("mag") then
                 TryRememberAttrOriginal("Ammo", v, name)
                 table.insert(CachedAmmoValues, {Object = v, Attribute = name})
-            elseif lowName:find("firerate") or lowName:find("delay") or lowName:find("cooldown") or lowName:find("time") or lowName:find("rate") or lowName:find("shoot") or lowName:find("rpm") then
+            elseif lowName:find("firerate") or lowName:find("delay") or lowName:find("cooldown") or lowName:find("time") or lowName:find("rate") or lowName:find("shoot") then
                 TryRememberAttrOriginal("FireRate", v, name)
                 table.insert(CachedFireRateValues, {Object = v, Attribute = name})
-            elseif lowName:find("reload") or lowName:find("rel") then
-                TryRememberAttrOriginal("Reload", v, name)
-                table.insert(CachedReloadValues, {Object = v, Attribute = name})
             elseif lowName:find("damage") or lowName:find("dmg") or lowName:find("power") then
                 table.insert(CachedDamageValues, {Object = v, Attribute = name})
             end
@@ -1179,207 +1077,74 @@ end
 SetupGlobalScanner()
 
 local function UpdateRage()
-    -- Infinite Ammo
-    for i = #CachedAmmoValues, 1, -1 do
-        local v = CachedAmmoValues[i]
-        local isTable = type(v) == "table"
-        local obj = isTable and v.Object or v
-        
-        if obj and obj.Parent then
-            if Config.InfAmmo then
-                if isTable then
-                    obj:SetAttribute(v.Attribute, 999)
-                else
-                    if obj:IsA("StringValue") then obj.Value = "999" else obj.Value = 999 end
-                end
-            else
-                -- Restore Original
-                if isTable then
-                    local original = RageOriginal.AttrAmmo[obj]
-                    if original and original[v.Attribute] ~= nil then
-                        obj:SetAttribute(v.Attribute, original[v.Attribute])
-                    end
-                else
-                    local original = RageOriginal.Ammo[obj]
-                    if original ~= nil then
-                        obj.Value = original
-                    end
-                end
-            end
-        else
-            table.remove(CachedAmmoValues, i)
+    if Config.InfAmmo then
+        for i = #CachedAmmoValues, 1, -1 do
+            local v = CachedAmmoValues[i]
+            if type(v) == "table" and v.Object and v.Object.Parent then
+                v.Object:SetAttribute(v.Attribute, 999)
+            elseif typeof(v) == "Instance" and v.Parent then
+                if v:IsA("StringValue") then v.Value = "999" else v.Value = 999 end
+            else table.remove(CachedAmmoValues, i) end
         end
     end
     
-    -- Rapid Fire
-    local mult = math.max(1, tonumber(Config.FireRateMultiplier) or 1)
-    local minDelay = 0.01
-    for i = #CachedFireRateValues, 1, -1 do
-        local v = CachedFireRateValues[i]
-        local isTable = type(v) == "table"
-        local obj = isTable and v.Object or v
-        
-        if obj and obj.Parent then
-            if Config.RapidFire then
-                if isTable then
-                    local originalTbl = RageOriginal.AttrFireRate[obj]
-                    local base = originalTbl and originalTbl[v.Attribute]
-                    if type(base) == "number" then
-                        obj:SetAttribute(v.Attribute, math.max(minDelay, base / mult))
+    if Config.RapidFire then
+        local mult = math.max(1, tonumber(Config.FireRateMultiplier) or 1)
+        local minDelay = 0.01
+        for i = #CachedFireRateValues, 1, -1 do
+            local v = CachedFireRateValues[i]
+            if type(v) == "table" and v.Object and v.Object.Parent then
+                local obj = v.Object
+                local attr = v.Attribute
+                local originalTbl = RageOriginal.AttrFireRate[obj]
+                local base = originalTbl and originalTbl[attr]
+                local cur = obj:GetAttribute(attr)
+                local baseNum = (type(base) == "number" and base) or (type(cur) == "number" and cur) or nil
+                if baseNum then
+                    obj:SetAttribute(attr, math.max(minDelay, baseNum / mult))
+                end
+            elseif typeof(v) == "Instance" and v.Parent then
+                if v:IsA("StringValue") then
+                    local base = RageOriginal.FireRate[v]
+                    local baseNum = tonumber(base) or tonumber(v.Value)
+                    if baseNum then
+                        v.Value = tostring(math.max(minDelay, baseNum / mult))
                     end
                 else
                     local base = RageOriginal.FireRate[v]
-                    local baseNum = tonumber(base) or tonumber(obj.Value)
+                    local baseNum = tonumber(base) or tonumber(v.Value)
                     if baseNum then
-                        if obj:IsA("StringValue") then
-                            obj.Value = tostring(math.max(minDelay, baseNum / mult))
-                        else
-                            obj.Value = math.max(minDelay, baseNum / mult)
-                        end
+                        v.Value = math.max(minDelay, baseNum / mult)
                     end
                 end
             else
-                -- Restore Original
-                if isTable then
-                    local originalTbl = RageOriginal.AttrFireRate[obj]
-                    if originalTbl and originalTbl[v.Attribute] ~= nil then
-                        obj:SetAttribute(v.Attribute, originalTbl[v.Attribute])
-                    end
-                else
-                    local original = RageOriginal.FireRate[obj]
-                    if original ~= nil then
-                        obj.Value = original
-                    end
-                end
+                table.remove(CachedFireRateValues, i)
             end
-        else
-            table.remove(CachedFireRateValues, i)
-        end
-    end
-
-    -- No Reload
-    for i = #CachedReloadValues, 1, -1 do
-        local v = CachedReloadValues[i]
-        local isTable = type(v) == "table"
-        local obj = isTable and v.Object or v
-        
-        if obj and obj.Parent then
-            if Config.NoReload then
-                if isTable then
-                    obj:SetAttribute(v.Attribute, 0.01)
-                else
-                    if obj:IsA("StringValue") then obj.Value = "0.01" else obj.Value = 0.01 end
-                end
-            else
-                -- Restore Original
-                if isTable then
-                    local originalTbl = RageOriginal.AttrReload[obj]
-                    if originalTbl and originalTbl[v.Attribute] ~= nil then
-                        obj:SetAttribute(v.Attribute, originalTbl[v.Attribute])
-                    end
-                else
-                    local original = RageOriginal.Reload[obj]
-                    if original ~= nil then
-                        obj.Value = original
-                    end
-                end
-            end
-        else
-            table.remove(CachedReloadValues, i)
         end
     end
 end
 
 -- Separate high-performance GC task
 task.spawn(function()
-    local ammoKeys = {
-        Ammo=true, Clip=true, Mag=true, StoredAmmo=true, CurrentAmmo=true, 
-        MaxAmmo=true, RemainingAmmo=true, Bullets=true, ReserveAmmo=true, 
-        MagSize=true, ClipSize=true, AmmoCount=true, CurrentClip=true, 
-        InventoryAmmo=true, SpareAmmo=true, TotalAmmo=true
-    }
-    local fireRateKeys = {
-        FireRate=true, ShootRate=true, Delay=true, Cooldown=true, Wait=true, 
-        TimeBetweenShots=true, Rate=true, ShotDelay=true, FireDelay=true, 
-        AttackDelay=true, AttackSpeed=true, ShootDelay=true, RPM=true, 
-        ShotsPerSecond=true, BurstRate=true
-    }
-    local reloadKeys = {
-        ReloadTime=true, ReloadSpeed=true, ReloadDelay=true, ReloadDuration=true, 
-        ReloadAnimSpeed=true, ReloadAnimDuration=true, ReloadWait=true
-    }
+    while task.wait(5) do -- Scan GC every 5 seconds instead of 3
+        if not getgc or (not Config.InfAmmo and not Config.RapidFire) then continue end
+        
+        local ammoKeys = {Ammo=true, Clip=true, Mag=true, StoredAmmo=true, CurrentAmmo=true, MaxAmmo=true, RemainingAmmo=true, Bullets=true, ReserveAmmo=true, MagSize=true, ClipSize=true}
+        local fireRateKeys = {FireRate=true, ShootRate=true, Delay=true, Cooldown=true, Wait=true, TimeBetweenShots=true, Rate=true}
 
-    while task.wait(3) do -- Scan GC every 3 seconds for more responsiveness
-        if not getgc then continue end
-        
-        local mult = math.max(1, tonumber(Config.FireRateMultiplier) or 1)
-        
         for _, v in pairs(getgc(true)) do
             if type(v) == "table" then
-                -- Infinite Ammo GC Patch
                 if Config.InfAmmo then
                     for key, _ in pairs(ammoKeys) do
                         if rawget(v, key) ~= nil and type(v[key]) == "number" then
-                            -- Save original if not seen
-                            if not RageOriginal.Module[v] then RageOriginal.Module[v] = {} end
-                            if RageOriginal.Module[v][key] == nil then RageOriginal.Module[v][key] = v[key] end
                             rawset(v, key, 999)
                         end
                     end
-                elseif RageOriginal.Module[v] then
-                    -- Restore Ammo if disabled
-                    for key, _ in pairs(ammoKeys) do
-                        if RageOriginal.Module[v][key] ~= nil then
-                            rawset(v, key, RageOriginal.Module[v][key])
-                        end
-                    end
                 end
-
-                -- No Reload GC Patch
-                if Config.NoReload then
-                    for key, _ in pairs(reloadKeys) do
-                        if rawget(v, key) ~= nil and type(v[key]) == "number" then
-                            -- Save original if not seen
-                            if not RageOriginal.Module[v] then RageOriginal.Module[v] = {} end
-                            if RageOriginal.Module[v][key] == nil then RageOriginal.Module[v][key] = v[key] end
-                            
-                            if key:find("Speed") then
-                                rawset(v, key, 100)
-                            else
-                                rawset(v, key, 0.01)
-                            end
-                        end
-                    end
-                elseif RageOriginal.Module[v] then
-                    -- Restore Reload if disabled
-                    for key, _ in pairs(reloadKeys) do
-                        if RageOriginal.Module[v][key] ~= nil then
-                            rawset(v, key, RageOriginal.Module[v][key])
-                        end
-                    end
-                end
-
-                -- Rapid Fire GC Patch
                 if Config.RapidFire then
                     for key, _ in pairs(fireRateKeys) do
                         if rawget(v, key) ~= nil and type(v[key]) == "number" then
-                            -- Save original if not seen
-                            if not RageOriginal.Module[v] then RageOriginal.Module[v] = {} end
-                            if RageOriginal.Module[v][key] == nil then RageOriginal.Module[v][key] = v[key] end
-                            
-                            local base = RageOriginal.Module[v][key]
-                            if key == "RPM" then
-                                rawset(v, key, base * mult)
-                            else
-                                rawset(v, key, math.max(0.01, base / mult))
-                            end
-                        end
-                    end
-                elseif RageOriginal.Module[v] then
-                    -- Restore FireRate if disabled
-                    for key, _ in pairs(fireRateKeys) do
-                        if RageOriginal.Module[v][key] ~= nil and fireRateKeys[key] then
-                            rawset(v, key, RageOriginal.Module[v][key])
+                            rawset(v, key, 0.01)
                         end
                     end
                 end
@@ -1420,11 +1185,17 @@ SetupRageListeners()
 local function ToggleFreeze()
     Config.Frozen = not Config.Frozen
     
+    -- Simulate Ping Spike in Stats
+    pcall(function()
+        settings().Network.IncomingReplicationLag = Config.Frozen and 1000 or 0
+    end)
+    
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character then
-            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                hrp.Anchored = Config.Frozen
+            for _, part in ipairs(player.Character:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then -- Don't anchor HRP to prevent running in place
+                    part.Anchored = Config.Frozen
+                end
             end
         end
     end
@@ -1510,132 +1281,6 @@ local function GetClosestPlayerToMouse()
     return target
 end
 
--- [[ ADONIS BYPASS (Stealth Layer) ]]
-local function AdonisBypass()
-    if not getgc then return end
-    
-    -- Stealth Hook for debug info to hide our hooks
-    if hookfunction and newcclosure then
-        local oldDebugInfo; oldDebugInfo = hookfunction(debug.info, newcclosure(function(f, ...)
-            if not checkcaller() and typeof(f) == "function" and isexecutorclosure(f) then
-                return oldDebugInfo(print, ...) -- Return info for a standard function instead
-            end
-            return oldDebugInfo(f, ...)
-        end))
-        
-        local oldGetInfo; oldGetInfo = hookfunction(debug.getinfo, newcclosure(function(f, ...)
-            if not checkcaller() and typeof(f) == "function" and isexecutorclosure(f) then
-                return oldGetInfo(print, ...)
-            end
-            return oldGetInfo(f, ...)
-        end))
-    end
-    
-    for _, v in pairs(getgc(true)) do
-        pcall(function()
-            if type(v) == "table" then
-                -- Target Adonis detection tables
-                if rawget(v, "Detected") and typeof(v.Detected) == "function" then
-                    v.Detected = newcclosure(function(...) return true end)
-                end
-                -- Target 0x215F Proxy checks
-                if rawget(v, "Proxy") and type(v.Proxy) == "table" then
-                    rawset(v, "Proxy", {})
-                end
-            elseif type(v) == "function" and not isexecutorclosure(v) then
-                local name = debug.info(v, "n")
-                local constants = debug.getconstants(v)
-                
-                -- Detect and nullify kicks/detections
-                if table.find(constants, "kick") or table.find(constants, "Detected") or table.find(constants, "Crash") then
-                    if table.find(constants, "0x215F") or table.find(constants, "0xE28D") or table.find(constants, "Proxy") then
-                        hookfunction(v, newcclosure(function() return end))
-                    end
-                end
-            end
-        end)
-    end
-end
-pcall(AdonisBypass)
-
--- Evilion Pure Luau Silent Aim (High-Performance Metatable Redirection)
-local LastEvilionTick = 0
-local FrameCachedTarget = nil
-
--- Hooking System (Stealth Metamethod Hooks - Adonis Safe)
-local RunningHook = false
-local Hooked = false
-
-local function StealthHook()
-    if Hooked then return end
-    Hooked = true
-    
-    local Camera = workspace.CurrentCamera
-    local Mouse = LocalPlayer:GetMouse()
-
-    -- Camera Refresh Listener
-    workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
-        Camera = workspace.CurrentCamera
-    end)
-    
-    if hookmetamethod then
-        local OldIndex; OldIndex = hookmetamethod(game, "__index", newcclosure(function(self, index)
-            if RunningHook or checkcaller() or not self then return OldIndex(self, index) end
-            
-            return OldIndex(self, index)
-        end))
-
-        local OldNamecall; OldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-            local method = getnamecallmethod()
-            if RunningHook or checkcaller() or not self or not method then return OldNamecall(self, ...) end
-            
-            return OldNamecall(self, ...)
-        end))
-    else
-        -- Standard hooks (Simplified for safety)
-        local CameraMT = getrawmetatable(Camera)
-        local MouseMT = getrawmetatable(Mouse)
-        local OldCameraIndex = CameraMT.__index
-        local OldCameraNamecall = CameraMT.__namecall
-        local OldMouseIndex = MouseMT.__index
-
-        setreadonly(CameraMT, false)
-        setreadonly(MouseMT, false)
-
-        CameraMT.__index = newcclosure(function(self, index)
-            return OldCameraIndex(self, index)
-        end)
-
-        CameraMT.__namecall = newcclosure(function(self, ...)
-            return OldCameraNamecall(self, ...)
-        end)
-
-        MouseMT.__index = newcclosure(function(self, index)
-            return OldMouseIndex(self, index)
-        end)
-
-        setreadonly(CameraMT, true)
-        setreadonly(MouseMT, true)
-    end
-end
-pcall(StealthHook)
-
--- Projectile Redirection (Pure Luau Physics Override)
-workspace.ChildAdded:Connect(function(child)
-    if child:IsA("BasePart") then
-        task.delay(0, function()
-            if not child.Parent then return end
-            
-            local lowName = child.Name:lower()
-            local isProjectile = child.Velocity.Magnitude > 10 or lowName:find("bullet") or lowName:find("projectile") or lowName:find("shot")
-            
-            if isProjectile then
-                -- Silent Aim redirection removed
-            end
-        end)
-    end
-end)
-
 RunService.RenderStepped:Connect(function()
     FOVCircle.Visible = Config.Aimbot_ShowFOV
     FOVCircle.Radius = Config.Aimbot_FOVRadius
@@ -1718,35 +1363,13 @@ SideStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
 local TitleLabel = Instance.new("TextLabel", SideBar)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Position = UDim2.new(0, -25, 0, 20)
+TitleLabel.Position = UDim2.new(0, 0, 0, 20)
 TitleLabel.Size = UDim2.new(1, 0, 0, 40)
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.Text = "MERCY HUB"
 TitleLabel.TextColor3 = Color3.fromRGB(180, 100, 255)
 TitleLabel.TextSize = 20
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Center
-
-local StandardTag = Instance.new("Frame", SideBar)
-StandardTag.BackgroundColor3 = Color3.fromRGB(20, 10, 25)
-StandardTag.BorderSizePixel = 0
-StandardTag.Position = UDim2.new(0.5, 45, 0, 32)
-StandardTag.Size = UDim2.new(0, 52, 0, 16)
-Instance.new("UICorner", StandardTag).CornerRadius = UDim.new(1, 0)
-
-local TagStroke = Instance.new("UIStroke", StandardTag)
-TagStroke.Color = Color3.fromRGB(180, 100, 255)
-TagStroke.Thickness = 1
-TagStroke.Transparency = 0.5
-TagStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-
-local TagLabel = Instance.new("TextLabel", StandardTag)
-TagLabel.BackgroundTransparency = 1
-TagLabel.Size = UDim2.new(1, 0, 1, 0)
-TagLabel.Font = Enum.Font.GothamBold
-TagLabel.Text = "Standard"
-TagLabel.TextColor3 = Color3.fromRGB(180, 100, 255)
-TagLabel.TextSize = 9
-TagLabel.TextYAlignment = Enum.TextYAlignment.Center
 
 local VersionLabel = Instance.new("TextLabel", SideBar)
 VersionLabel.BackgroundTransparency = 1
@@ -1796,9 +1419,6 @@ local function CreateTabBtn(text)
     return btn, indicator, glow
 end
 
--- UI Elements Storage (Fixes "Out of local registers" error)
-local UI = {}
-
 local AimbotBtn, AimbotIndicator, AimbotGlow = CreateTabBtn("Aimbot")
 local HitboxBtn, HitboxIndicator, HitboxGlow = CreateTabBtn("Hitbox")
 local ESPBtn, ESPIndicator, ESPGlow = CreateTabBtn("ESP")
@@ -1841,51 +1461,6 @@ local MiscFrame = CreateFrame("MiscFrame")
 local FreezeFrame = CreateFrame("FreezeFrame")
 local WhitelistFrame = CreateFrame("WhitelistFrame")
 local GameFrame = CreateFrame("GameFrame")
-
--- Store Frames in UI table
-UI.Frames = {
-    Hitbox = HitboxFrame,
-    Aimbot = AimbotFrame,
-    ESP = ESPFrame,
-    Rage = RageFrame,
-    Misc = MiscFrame,
-    Freeze = FreezeFrame,
-    Whitelist = WhitelistFrame,
-    Game = GameFrame
-}
-
-UI.Indicators = {
-    Hitbox = HitboxIndicator,
-    Aimbot = AimbotIndicator,
-    ESP = ESPIndicator,
-    Rage = RageIndicator,
-    Misc = MiscIndicator,
-    Freeze = FreezeIndicator,
-    Whitelist = WhitelistIndicator,
-    Game = GameIndicator
-}
-
-UI.Glows = {
-    Hitbox = HitboxGlow,
-    Aimbot = AimbotGlow,
-    ESP = ESPGlow,
-    Rage = RageGlow,
-    Misc = MiscGlow,
-    Freeze = FreezeGlow,
-    Whitelist = WhitelistGlow,
-    Game = GameGlow
-}
-
-UI.Btns = {
-    Hitbox = HitboxBtn,
-    Aimbot = AimbotBtn,
-    ESP = ESPBtn,
-    Rage = RageBtn,
-    Misc = MiscBtn,
-    Freeze = FreezeBtnTab,
-    Whitelist = WhitelistBtnTab,
-    Game = GameBtnTab
-}
 
 -- Modify WhitelistFrame into a Two-Column Layout
 WhitelistFrame:ClearAllChildren()
@@ -2031,6 +1606,7 @@ local FlingBtn = CreateActionBtn("Fling", UDim2.new(0.48, 0, 0, 28), UDim2.new(0
 local TargetActionBtn = CreateActionBtn("Target", UDim2.new(1, 0, 0, 28), UDim2.new(0, 0, 0, 70))
 
 local GameFrame = CreateFrame("GameFrame")
+AimbotFrame.Visible = true
 
 local function CreateButton(text, parent)
     local btn = Instance.new("TextButton", parent)
@@ -2131,64 +1707,57 @@ local function CreateSlider(text, parent, min, max, default, callback)
 end
 
 -- Tab Elements
-UI.ToggleBtn = CreateButton("Status: Disabled", HitboxFrame)
-UI.ShowHitboxToggleBtn_HitboxTab = CreateButton("Show Hitbox: OFF", HitboxFrame)
-UI.TeamToggle = CreateButton("Team Check: OFF", HitboxFrame)
-UI.WallToggle = CreateButton("Wall Check: OFF", HitboxFrame)
-UI.PartCycle = CreateButton("Target: Body", HitboxFrame)
+local ToggleBtn = CreateButton("Status: Disabled", HitboxFrame)
+local ShowHitboxToggleBtn_HitboxTab = CreateButton("Show Hitbox: OFF", HitboxFrame)
+local TeamToggle = CreateButton("Team Check: OFF", HitboxFrame)
+local WallToggle = CreateButton("Wall Check: OFF", HitboxFrame)
+local PartCycle = CreateButton("Target: Body", HitboxFrame)
 
+-- Aimbot Tab
+local AimbotToggleBtn = CreateButton("Aimbot: OFF", AimbotFrame)
+local AimbotMethodBtn = CreateButton("Method: Cam Lock", AimbotFrame)
+local AimbotShowFOVBtn = CreateButton("Show FOV: OFF", AimbotFrame)
+local AimbotTeamCheckBtn = CreateButton("Team Check: OFF", AimbotFrame)
+local AimbotWallCheckBtn = CreateButton("Wall Check: OFF", AimbotFrame)
+local AimbotPartCycle = CreateButton("Aimbot Target: Head", AimbotFrame)
+local AimbotFOVSlider = CreateSlider("FOV Radius", AimbotFrame, 10, 800, 150, function(val) Config.Aimbot_FOVRadius = val end)
+local AimbotSmoothSlider = CreateSlider("Smoothing", AimbotFrame, 1, 25, 5, function(val) Config.Aimbot_Smoothing = val end)
 local SizeInput = Instance.new("TextBox", HitboxFrame)
 SizeInput.Size = UDim2.new(0.9, 0, 0, 35); SizeInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 SizeInput.PlaceholderText = "Size (10)"; SizeInput.Text = ""; SizeInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 Instance.new("UICorner", SizeInput)
 
--- ESP Tab
-UI.AimbotToggleBtn = CreateButton("Aimbot: OFF", AimbotFrame)
-UI.AimbotMethodBtn = CreateButton("Method: Cam Lock", AimbotFrame)
-UI.AimbotShowFOVBtn = CreateButton("Show FOV: OFF", AimbotFrame)
-UI.AimbotTeamCheckBtn = CreateButton("Team Check: OFF", AimbotFrame)
-UI.AimbotWallCheckBtn = CreateButton("Wall Check: OFF", AimbotFrame)
-UI.AimbotPartCycle = CreateButton("Aimbot Target: Head", AimbotFrame)
-UI.AimbotFOVSlider = CreateSlider("FOV Radius", AimbotFrame, 10, 800, 150, function(val) Config.Aimbot_FOVRadius = val end)
-UI.AimbotSmoothSlider = CreateSlider("Smoothing", AimbotFrame, 1, 25, 5, function(val) Config.Aimbot_Smoothing = val end)
-
--- ESP Tab
-UI.ESPToggleBtn = CreateButton("ESP Toggle: OFF (Q)", ESPFrame)
-UI.ChamsToggleBtn = CreateButton("Chams: OFF", ESPFrame)
-UI.HitboxEspToggleBtn = CreateButton("Show Hitbox: OFF", ESPFrame)
-UI.CleanVisualsToggle = CreateButton("Clean Visuals: ON", ESPFrame)
-UI.HealthToggleBtn = CreateButton("Health Text: OFF", ESPFrame)
-UI.DisplayNameToggleBtn = CreateButton("Show Names: OFF", ESPFrame)
-UI.VisCheckToggleBtn = CreateButton("Visible Check: OFF", ESPFrame)
+local ESPToggleBtn = CreateButton("ESP Toggle: OFF (Q)", ESPFrame)
+local ChamsToggleBtn = CreateButton("Chams: OFF", ESPFrame)
+local HitboxEspToggleBtn = CreateButton("Show Hitbox: OFF", ESPFrame)
+local CleanVisualsToggle = CreateButton("Clean Visuals: ON", ESPFrame)
+local HealthToggleBtn = CreateButton("Health Text: OFF", ESPFrame)
+local DisplayNameToggleBtn = CreateButton("Show Names: OFF", ESPFrame)
+local VisCheckToggleBtn = CreateButton("Visible Check: OFF", ESPFrame)
 
 -- Rage Tab
-UI.InfAmmoBtn = CreateButton("Infinite Ammo: OFF", RageFrame)
-UI.NoReloadBtn = CreateButton("No Reload: OFF", RageFrame)
-UI.RapidFireBtn = CreateButton("Rapid Fire: OFF", RageFrame)
-UI.FireRateSlider = CreateSlider("Rapid Fire Speed", RageFrame, 1, 10, 1, function(val) Config.FireRateMultiplier = val end)
+local InfAmmoBtn = CreateButton("Infinite Ammo: OFF", RageFrame)
+local RapidFireBtn = CreateButton("Rapid Fire: OFF", RageFrame)
+local FireRateSlider = CreateSlider("Rapid Fire Speed", RageFrame, 1, 10, 1, function(val) Config.FireRateMultiplier = val end)
 
 -- Misc Tab
-UI.WalkSpeedToggleBtn = CreateButton("WalkSpeed: OFF", MiscFrame)
-UI.WalkSpeedSlider = CreateSlider("Walk Speed", MiscFrame, 16, 200, 16, function(val) 
+local WalkSpeedToggleBtn = CreateButton("WalkSpeed: OFF", MiscFrame)
+local WalkSpeedSlider = CreateSlider("Walk Speed", MiscFrame, 16, 200, 16, function(val) 
     Config.WalkSpeed = val
     if Config.WalkSpeedEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         LocalPlayer.Character.Humanoid.WalkSpeed = val
     end
 end)
-UI.InfJumpToggleBtn = CreateButton("Infinite Jump: OFF", MiscFrame)
-UI.NoClipToggleBtn = CreateButton("NoClip: OFF", MiscFrame)
-UI.FlyToggleBtn = CreateButton("Fly: OFF", MiscFrame)
-UI.FlySpeedSlider = CreateSlider("Fly Speed", MiscFrame, 10, 200, 50, function(val) Config.FlySpeed = val end)
-UI.SpinbotToggleBtn = CreateButton("Spinbot: OFF", MiscFrame)
-UI.SpinSpeedSlider = CreateSlider("Spin Speed", MiscFrame, 1, 100, 50, function(val) Config.SpinSpeed = val end)
-UI.RenderQualitySlider = CreateSlider("Render Quality", MiscFrame, 1, 21, 21, function(val)
+local FlyToggleBtn = CreateButton("Fly: OFF", MiscFrame)
+local FlySpeedSlider = CreateSlider("Fly Speed", MiscFrame, 10, 200, 50, function(val) Config.FlySpeed = val end)
+local RenderQualitySlider = CreateSlider("Render Quality", MiscFrame, 1, 21, 21, function(val)
     Config.RenderQuality = val
     pcall(function()
         settings().Rendering.QualityLevel = val
     end)
 end)
 
-UI.FreezeToggleBtn = CreateButton("Freeze Players: OFF (T)", FreezeFrame)
+local FreezeToggleBtn = CreateButton("Freeze Players: OFF (T)", FreezeFrame)
 
 -- UI Logic
 local function UpdateWhitelistTab()
@@ -2481,9 +2050,6 @@ local function EjectScript()
     Config.ESP_Enabled = false
     Config.FlyEnabled = false
     Config.WalkSpeedEnabled = false
-    Config.InfJump = false
-    Config.NoClip = false
-    Config.Spinbot = false
     Config.Frozen = false
     Config.Aimbot_Enabled = false
     Config.Aimbot_ShowFOV = false
@@ -2530,25 +2096,21 @@ EjectBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
 EjectBtn.MouseButton1Click:Connect(EjectScript)
 
 local function SwitchTab(frame, btn, indicator, glow)
-    -- Hide all possible content frames to prevent overlapping
-    for _, child in ipairs(ContentContainer:GetChildren()) do
-        if child:IsA("ScrollingFrame") or child:IsA("Frame") then
-            child.Visible = false
-        end
-    end
+    HitboxFrame.Visible = false; AimbotFrame.Visible = false; ESPFrame.Visible = false; RageFrame.Visible = false; MiscFrame.Visible = false; FreezeFrame.Visible = false; WhitelistFrame.Visible = false; GameFrame.Visible = false
     
-    -- Reset all sidebar button visuals
-    for _, i in pairs(UI.Indicators) do i.Visible = false end
-    for _, g in pairs(UI.Glows) do g.Transparency = 1 end
-    for _, b in pairs(UI.Btns) do b.TextColor3 = Color3.fromRGB(150, 150, 150) end
+    HitboxIndicator.Visible = false; AimbotIndicator.Visible = false; ESPIndicator.Visible = false; RageIndicator.Visible = false; MiscIndicator.Visible = false; FreezeIndicator.Visible = false; WhitelistIndicator.Visible = false; GameIndicator.Visible = false
     
-    -- Show the selected tab
+    HitboxGlow.Transparency = 1; AimbotGlow.Transparency = 1; ESPGlow.Transparency = 1; RageGlow.Transparency = 1; MiscGlow.Transparency = 1; FreezeGlow.Transparency = 1; WhitelistGlow.Transparency = 1; GameGlow.Transparency = 1
+    
+    HitboxBtn.TextColor3 = Color3.fromRGB(150, 150, 150); AimbotBtn.TextColor3 = Color3.fromRGB(150, 150, 150); ESPBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
+    RageBtn.TextColor3 = Color3.fromRGB(150, 150, 150); MiscBtn.TextColor3 = Color3.fromRGB(150, 150, 150); FreezeBtnTab.TextColor3 = Color3.fromRGB(150, 150, 150); WhitelistBtnTab.TextColor3 = Color3.fromRGB(150, 150, 150); GameBtnTab.TextColor3 = Color3.fromRGB(150, 150, 150)
+    
     frame.Visible = true
     btn.TextColor3 = Color3.fromRGB(180, 100, 255)
     indicator.Visible = true
     glow.Transparency = 0.5
     
-    if frame == UI.Frames.Whitelist then UpdateWhitelistTab() end
+    if frame == WhitelistFrame then UpdateWhitelistTab() end
 end
 
 AimbotBtn.MouseButton1Click:Connect(function() SwitchTab(AimbotFrame, AimbotBtn, AimbotIndicator, AimbotGlow) end)
@@ -2560,32 +2122,29 @@ FreezeBtnTab.MouseButton1Click:Connect(function() SwitchTab(FreezeFrame, FreezeB
 WhitelistBtnTab.MouseButton1Click:Connect(function() SwitchTab(WhitelistFrame, WhitelistBtnTab, WhitelistIndicator, WhitelistGlow) end)
 GameBtnTab.MouseButton1Click:Connect(function() SwitchTab(GameFrame, GameBtnTab, GameIndicator, GameGlow) end)
 
--- Set initial tab correctly using the switch function to ensure everything else is hidden
-SwitchTab(AimbotFrame, AimbotBtn, AimbotIndicator, AimbotGlow)
-
 local function UpdateUI()
-    UI.ToggleBtn.Text = "Status: " .. (Config.Enabled and "Enabled" or "Disabled") .. " (E)"
-    UI.ToggleBtn.BackgroundColor3 = Config.Enabled and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
+    ToggleBtn.Text = "Status: " .. (Config.Enabled and "Enabled" or "Disabled") .. " (E)"
+    ToggleBtn.BackgroundColor3 = Config.Enabled and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
     
-    UI.AimbotToggleBtn.Text = "Aimbot: " .. (Config.Aimbot_Enabled and "ON" or "OFF")
-    UI.AimbotToggleBtn.BackgroundColor3 = Config.Aimbot_Enabled and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
+    AimbotToggleBtn.Text = "Aimbot: " .. (Config.Aimbot_Enabled and "ON" or "OFF")
+    AimbotToggleBtn.BackgroundColor3 = Config.Aimbot_Enabled and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
 
-    UI.AimbotMethodBtn.Text = "Method: " .. Config.Aimbot_Method
-    UI.AimbotMethodBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    AimbotMethodBtn.Text = "Method: " .. Config.Aimbot_Method
+    AimbotMethodBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 
-    UI.AimbotShowFOVBtn.Text = "Show FOV: " .. (Config.Aimbot_ShowFOV and "ON" or "OFF")
-    UI.AimbotShowFOVBtn.BackgroundColor3 = Config.Aimbot_ShowFOV and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
+    AimbotShowFOVBtn.Text = "Show FOV: " .. (Config.Aimbot_ShowFOV and "ON" or "OFF")
+    AimbotShowFOVBtn.BackgroundColor3 = Config.Aimbot_ShowFOV and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
 
-    UI.AimbotTeamCheckBtn.Text = "Team Check: " .. (Config.Aimbot_TeamCheck and "ON" or "OFF")
-    UI.AimbotTeamCheckBtn.BackgroundColor3 = Config.Aimbot_TeamCheck and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
+    AimbotTeamCheckBtn.Text = "Team Check: " .. (Config.Aimbot_TeamCheck and "ON" or "OFF")
+    AimbotTeamCheckBtn.BackgroundColor3 = Config.Aimbot_TeamCheck and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
 
-    UI.AimbotWallCheckBtn.Text = "Wall Check: " .. (Config.Aimbot_WallCheck and "ON" or "OFF")
-    UI.AimbotWallCheckBtn.BackgroundColor3 = Config.Aimbot_WallCheck and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
+    AimbotWallCheckBtn.Text = "Wall Check: " .. (Config.Aimbot_WallCheck and "ON" or "OFF")
+    AimbotWallCheckBtn.BackgroundColor3 = Config.Aimbot_WallCheck and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
 
-    UI.AimbotPartCycle.Text = "Aimbot Target: " .. Config.Aimbot_TargetPart
+    AimbotPartCycle.Text = "Aimbot Target: " .. Config.Aimbot_TargetPart
 
-    UI.CleanVisualsToggle.Text = "Clean Visuals: " .. (Config.UnmodifiedVisuals and "ON" or "OFF")
-    UI.CleanVisualsToggle.BackgroundColor3 = Config.UnmodifiedVisuals and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
+    CleanVisualsToggle.Text = "Clean Visuals: " .. (Config.UnmodifiedVisuals and "ON" or "OFF")
+    CleanVisualsToggle.BackgroundColor3 = Config.UnmodifiedVisuals and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
     
     if Config.UnmodifiedVisuals then
         Config.HitboxTransparency = 1
@@ -2593,91 +2152,79 @@ local function UpdateUI()
         Config.HitboxTransparency = 0.5
     end
 
-    UI.TeamToggle.Text = "Team Check: " .. (Config.TeamCheck and "ON" or "OFF")
-    UI.TeamToggle.BackgroundColor3 = Config.TeamCheck and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
+    TeamToggle.Text = "Team Check: " .. (Config.TeamCheck and "ON" or "OFF")
+    TeamToggle.BackgroundColor3 = Config.TeamCheck and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
     
-    UI.WallToggle.Text = "Wall Check: " .. (Config.WallCheck and "ON" or "OFF")
-    UI.WallToggle.BackgroundColor3 = Config.WallCheck and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
+    WallToggle.Text = "Wall Check: " .. (Config.WallCheck and "ON" or "OFF")
+    WallToggle.BackgroundColor3 = Config.WallCheck and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
     
-    UI.PartCycle.Text = "Target: " .. Config.TargetPart
+    PartCycle.Text = "Target: " .. Config.TargetPart
     
-    UI.ShowHitboxToggleBtn_HitboxTab.Text = "Show Hitbox: " .. (Config.ShowHitbox and "ON" or "OFF")
-    UI.ShowHitboxToggleBtn_HitboxTab.BackgroundColor3 = Config.ShowHitbox and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
+    ShowHitboxToggleBtn_HitboxTab.Text = "Show Hitbox: " .. (Config.ShowHitbox and "ON" or "OFF")
+    ShowHitboxToggleBtn_HitboxTab.BackgroundColor3 = Config.ShowHitbox and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
 
-    UI.ESPToggleBtn.Text = "ESP Toggle: " .. (Config.ESP_Enabled and "ON" or "OFF") .. " (Q)"
-    UI.ESPToggleBtn.BackgroundColor3 = Config.ESP_Enabled and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
+    ESPToggleBtn.Text = "ESP Toggle: " .. (Config.ESP_Enabled and "ON" or "OFF") .. " (Q)"
+    ESPToggleBtn.BackgroundColor3 = Config.ESP_Enabled and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
     
-    UI.ChamsToggleBtn.Text = "Chams: " .. (Config.Chams_Enabled and "ON" or "OFF")
-    UI.ChamsToggleBtn.BackgroundColor3 = Config.Chams_Enabled and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
+    ChamsToggleBtn.Text = "Chams: " .. (Config.Chams_Enabled and "ON" or "OFF")
+    ChamsToggleBtn.BackgroundColor3 = Config.Chams_Enabled and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
 
-    UI.HitboxEspToggleBtn.Text = "Show Hitbox: " .. (Config.ShowHitbox and "ON" or "OFF")
-    UI.HitboxEspToggleBtn.BackgroundColor3 = Config.ShowHitbox and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
+    HitboxEspToggleBtn.Text = "Show Hitbox: " .. (Config.ShowHitbox and "ON" or "OFF")
+    HitboxEspToggleBtn.BackgroundColor3 = Config.ShowHitbox and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
     
-    UI.HealthToggleBtn.Text = "Health Text: " .. (Config.HealthText_Enabled and "ON" or "OFF")
-    UI.HealthToggleBtn.BackgroundColor3 = Config.HealthText_Enabled and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
+    HealthToggleBtn.Text = "Health Text: " .. (Config.HealthText_Enabled and "ON" or "OFF")
+    HealthToggleBtn.BackgroundColor3 = Config.HealthText_Enabled and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
     
-    UI.DisplayNameToggleBtn.Text = "Show Names: " .. (Config.ShowDisplayName and "ON" or "OFF")
-    UI.DisplayNameToggleBtn.BackgroundColor3 = Config.ShowDisplayName and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
+    DisplayNameToggleBtn.Text = "Show Names: " .. (Config.ShowDisplayName and "ON" or "OFF")
+    DisplayNameToggleBtn.BackgroundColor3 = Config.ShowDisplayName and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
     
-    UI.VisCheckToggleBtn.Text = "Visible Check: " .. (Config.VisibleCheck and "ON" or "OFF")
-    UI.VisCheckToggleBtn.BackgroundColor3 = Config.VisibleCheck and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
+    VisCheckToggleBtn.Text = "Visible Check: " .. (Config.VisibleCheck and "ON" or "OFF")
+    VisCheckToggleBtn.BackgroundColor3 = Config.VisibleCheck and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
     
-    UI.FreezeToggleBtn.Text = "Freeze Players: " .. (Config.Frozen and "ON" or "OFF") .. " (T)"
-    UI.FreezeToggleBtn.BackgroundColor3 = Config.Frozen and Color3.fromRGB(150, 50, 50) or Color3.fromRGB(20, 20, 20)
+    FreezeToggleBtn.Text = "Freeze Players: " .. (Config.Frozen and "ON" or "OFF") .. " (T)"
+    FreezeToggleBtn.BackgroundColor3 = Config.Frozen and Color3.fromRGB(150, 50, 50) or Color3.fromRGB(20, 20, 20)
     
-    UI.FlyToggleBtn.Text = "Fly: " .. (Config.FlyEnabled and "ON" or "OFF")
-    UI.FlyToggleBtn.BackgroundColor3 = Config.FlyEnabled and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
+    FlyToggleBtn.Text = "Fly: " .. (Config.FlyEnabled and "ON" or "OFF")
+    FlyToggleBtn.BackgroundColor3 = Config.FlyEnabled and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
     
-    UI.WalkSpeedToggleBtn.Text = "WalkSpeed: " .. (Config.WalkSpeedEnabled and "ON" or "OFF")
-    UI.WalkSpeedToggleBtn.BackgroundColor3 = Config.WalkSpeedEnabled and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
-
-    UI.InfJumpToggleBtn.Text = "Infinite Jump: " .. (Config.InfJump and "ON" or "OFF")
-    UI.InfJumpToggleBtn.BackgroundColor3 = Config.InfJump and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
-
-    UI.NoClipToggleBtn.Text = "NoClip: " .. (Config.NoClip and "ON" or "OFF")
-    UI.NoClipToggleBtn.BackgroundColor3 = Config.NoClip and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
-
-    UI.SpinbotToggleBtn.Text = "Spinbot: " .. (Config.Spinbot and "ON" or "OFF")
-    UI.SpinbotToggleBtn.BackgroundColor3 = Config.Spinbot and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
+    WalkSpeedToggleBtn.Text = "WalkSpeed: " .. (Config.WalkSpeedEnabled and "ON" or "OFF")
+    WalkSpeedToggleBtn.BackgroundColor3 = Config.WalkSpeedEnabled and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
     
-    UI.InfAmmoBtn.Text = "Infinite Ammo: " .. (Config.InfAmmo and "ON" or "OFF")
-    UI.InfAmmoBtn.BackgroundColor3 = Config.InfAmmo and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
+    InfAmmoBtn.Text = "Infinite Ammo: " .. (Config.InfAmmo and "ON" or "OFF")
+    InfAmmoBtn.BackgroundColor3 = Config.InfAmmo and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
     
-    UI.NoReloadBtn.Text = "No Reload: " .. (Config.NoReload and "ON" or "OFF")
-    UI.NoReloadBtn.BackgroundColor3 = Config.NoReload and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
-    
-    UI.RapidFireBtn.Text = "Rapid Fire: " .. (Config.RapidFire and "ON" or "OFF")
-    UI.RapidFireBtn.BackgroundColor3 = Config.RapidFire and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
+    RapidFireBtn.Text = "Rapid Fire: " .. (Config.RapidFire and "ON" or "OFF")
+    RapidFireBtn.BackgroundColor3 = Config.RapidFire and Color3.fromRGB(180, 100, 255) or Color3.fromRGB(20, 20, 20)
 end
 
-UI.ToggleBtn.MouseButton1Click:Connect(function()
+ToggleBtn.MouseButton1Click:Connect(function()
     Config.Enabled = not Config.Enabled
     if not Config.Enabled then RestoreAllHitboxes() end
     UpdateUI()
 end)
 
-UI.AimbotToggleBtn.MouseButton1Click:Connect(function() Config.Aimbot_Enabled = not Config.Aimbot_Enabled UpdateUI() end)
-UI.AimbotMethodBtn.MouseButton1Click:Connect(function()
+AimbotToggleBtn.MouseButton1Click:Connect(function() Config.Aimbot_Enabled = not Config.Aimbot_Enabled UpdateUI() end)
+AimbotMethodBtn.MouseButton1Click:Connect(function()
     Config.Aimbot_Method = (Config.Aimbot_Method == "Cam Lock") and "Mouse Lock" or "Cam Lock"
     UpdateUI()
 end)
-UI.AimbotShowFOVBtn.MouseButton1Click:Connect(function() Config.Aimbot_ShowFOV = not Config.Aimbot_ShowFOV UpdateUI() end)
-UI.AimbotTeamCheckBtn.MouseButton1Click:Connect(function() Config.Aimbot_TeamCheck = not Config.Aimbot_TeamCheck UpdateUI() end)
-UI.AimbotWallCheckBtn.MouseButton1Click:Connect(function() Config.Aimbot_WallCheck = not Config.Aimbot_WallCheck UpdateUI() end)
+AimbotShowFOVBtn.MouseButton1Click:Connect(function() Config.Aimbot_ShowFOV = not Config.Aimbot_ShowFOV UpdateUI() end)
+AimbotTeamCheckBtn.MouseButton1Click:Connect(function() Config.Aimbot_TeamCheck = not Config.Aimbot_TeamCheck UpdateUI() end)
+AimbotWallCheckBtn.MouseButton1Click:Connect(function() Config.Aimbot_WallCheck = not Config.Aimbot_WallCheck UpdateUI() end)
 local AimbotParts = {"Head", "Body"}
 local AimbotPartIdx = 1
-UI.AimbotPartCycle.MouseButton1Click:Connect(function()
+AimbotPartCycle.MouseButton1Click:Connect(function()
     AimbotPartIdx = AimbotPartIdx % #AimbotParts + 1; Config.Aimbot_TargetPart = AimbotParts[AimbotPartIdx]
     UpdateUI()
 end)
 
-UI.CleanVisualsToggle.MouseButton1Click:Connect(function() 
+CleanVisualsToggle.MouseButton1Click:Connect(function() 
     Config.UnmodifiedVisuals = not Config.UnmodifiedVisuals 
     RestoreAllHitboxes()
     UpdateUI() 
 end)
-UI.TeamToggle.MouseButton1Click:Connect(function() Config.TeamCheck = not Config.TeamCheck UpdateUI() end)
-UI.WallToggle.MouseButton1Click:Connect(function() 
+TeamToggle.MouseButton1Click:Connect(function() Config.TeamCheck = not Config.TeamCheck UpdateUI() end)
+WallToggle.MouseButton1Click:Connect(function() 
     Config.WallCheck = not Config.WallCheck 
     if not Config.WallCheck then for _, p in ipairs(Players:GetPlayers()) do ApplyHitbox(p) end end
     UpdateUI() 
@@ -2685,29 +2232,26 @@ end)
 -- Removing HumanoidRootPart target prevents "run in place" physics issues.
 local Parts = {"Body", "Head"}
 local PartIdx = 1
-UI.PartCycle.MouseButton1Click:Connect(function()
+PartCycle.MouseButton1Click:Connect(function()
     PartIdx = PartIdx % #Parts + 1; Config.TargetPart = Parts[PartIdx]
     RestoreAllHitboxes()
     UpdateUI()
 end)
 SizeInput.FocusLost:Connect(function() Config.HitboxSize = tonumber(SizeInput.Text) or Config.HitboxSize end)
-UI.ShowHitboxToggleBtn_HitboxTab.MouseButton1Click:Connect(function() 
+ShowHitboxToggleBtn_HitboxTab.MouseButton1Click:Connect(function() 
     Config.ShowHitbox = not Config.ShowHitbox 
     UpdateUI() 
 end)
 
-UI.ESPToggleBtn.MouseButton1Click:Connect(function() Config.ESP_Enabled = not Config.ESP_Enabled UpdateUI() end)
-UI.ChamsToggleBtn.MouseButton1Click:Connect(function() Config.Chams_Enabled = not Config.Chams_Enabled UpdateUI() end)
-UI.HitboxEspToggleBtn.MouseButton1Click:Connect(function() Config.ShowHitbox = not Config.ShowHitbox UpdateUI() end)
-UI.HealthToggleBtn.MouseButton1Click:Connect(function() Config.HealthText_Enabled = not Config.HealthText_Enabled UpdateUI() end)
-UI.DisplayNameToggleBtn.MouseButton1Click:Connect(function() Config.ShowDisplayName = not Config.ShowDisplayName UpdateUI() end)
-UI.VisCheckToggleBtn.MouseButton1Click:Connect(function() Config.VisibleCheck = not Config.VisibleCheck UpdateUI() end)
-UI.FreezeToggleBtn.MouseButton1Click:Connect(function() ToggleFreeze(); UpdateUI() end)
-UI.FlyToggleBtn.MouseButton1Click:Connect(function() Config.FlyEnabled = not Config.FlyEnabled; if Config.FlyEnabled then StartFly() end; UpdateUI() end)
-UI.InfJumpToggleBtn.MouseButton1Click:Connect(function() Config.InfJump = not Config.InfJump UpdateUI() end)
-UI.NoClipToggleBtn.MouseButton1Click:Connect(function() Config.NoClip = not Config.NoClip UpdateUI() end)
-UI.SpinbotToggleBtn.MouseButton1Click:Connect(function() Config.Spinbot = not Config.Spinbot UpdateUI() end)
-UI.WalkSpeedToggleBtn.MouseButton1Click:Connect(function() 
+ESPToggleBtn.MouseButton1Click:Connect(function() Config.ESP_Enabled = not Config.ESP_Enabled UpdateUI() end)
+ChamsToggleBtn.MouseButton1Click:Connect(function() Config.Chams_Enabled = not Config.Chams_Enabled UpdateUI() end)
+HitboxEspToggleBtn.MouseButton1Click:Connect(function() Config.ShowHitbox = not Config.ShowHitbox UpdateUI() end)
+HealthToggleBtn.MouseButton1Click:Connect(function() Config.HealthText_Enabled = not Config.HealthText_Enabled UpdateUI() end)
+DisplayNameToggleBtn.MouseButton1Click:Connect(function() Config.ShowDisplayName = not Config.ShowDisplayName UpdateUI() end)
+VisCheckToggleBtn.MouseButton1Click:Connect(function() Config.VisibleCheck = not Config.VisibleCheck UpdateUI() end)
+FreezeToggleBtn.MouseButton1Click:Connect(function() ToggleFreeze(); UpdateUI() end)
+FlyToggleBtn.MouseButton1Click:Connect(function() Config.FlyEnabled = not Config.FlyEnabled; if Config.FlyEnabled then StartFly() end; UpdateUI() end)
+WalkSpeedToggleBtn.MouseButton1Click:Connect(function() 
     Config.WalkSpeedEnabled = not Config.WalkSpeedEnabled
     if not Config.WalkSpeedEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         LocalPlayer.Character.Humanoid.WalkSpeed = 16 -- Reset to default
@@ -2715,9 +2259,8 @@ UI.WalkSpeedToggleBtn.MouseButton1Click:Connect(function()
     UpdateUI() 
 end)
 
-UI.InfAmmoBtn.MouseButton1Click:Connect(function() Config.InfAmmo = not Config.InfAmmo UpdateUI() end)
-UI.NoReloadBtn.MouseButton1Click:Connect(function() Config.NoReload = not Config.NoReload UpdateUI() end)
-UI.RapidFireBtn.MouseButton1Click:Connect(function() Config.RapidFire = not Config.RapidFire UpdateUI() end)
+InfAmmoBtn.MouseButton1Click:Connect(function() Config.InfAmmo = not Config.InfAmmo UpdateUI() end)
+RapidFireBtn.MouseButton1Click:Connect(function() Config.RapidFire = not Config.RapidFire UpdateUI() end)
 
 -- Hotkeys & Setup
 UserInputService.InputBegan:Connect(function(input, gp)
@@ -2746,28 +2289,6 @@ local function SetupPlayer(player)
         ApplyHitbox(player)
     end
 end
-
--- Movement Logic (Jump, NoClip, Spinbot)
-UserInputService.JumpRequest:Connect(function()
-    if Config.InfJump and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-        LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
-    end
-end)
-
-RunService.Stepped:Connect(function()
-    if Config.NoClip and LocalPlayer.Character then
-        for _, v in ipairs(LocalPlayer.Character:GetDescendants()) do
-            if v:IsA("BasePart") and v.CanCollide then
-                v.CanCollide = false
-            end
-        end
-    end
-    
-    if Config.Spinbot and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        local hrp = LocalPlayer.Character.HumanoidRootPart
-        hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(Config.SpinSpeed), 0)
-    end
-end)
 
 local charAddedConnWS
 local function SetupLocalPlayer()
